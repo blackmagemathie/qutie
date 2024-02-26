@@ -1,11 +1,13 @@
 incsrc "def.asm"
 
 freecode
+
+incsrc "pal.asm"
     
 process:
     ldx !qutieIndex     ; get queue index into x.
     bne +               ; zero?
-    rtl                 ; if yes, return
+    rtl                 ; if yes, return.
     +
     lda #$80            ; set vram incrementation mode.
     sta $2215           ;
@@ -84,6 +86,6 @@ process:
         beq +           ; all done?
         jmp -           ; if no, keep going.
         +
-        stz $2224       ; readjust sas mapping.
+        stz $2224       ; restore sas mapping.
         stz !qutieIndex ; clear queue index.
         rtl             ;
