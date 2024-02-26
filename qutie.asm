@@ -75,15 +75,15 @@ process:
         bra .next
         
     .activate:
-        lda #$04                ; execute dma.
-        sta $420b               ;
+        lda #$04    ; execute dma.
+        sta $420b   ;
         
     .next:
-    iny             ; next queue slot.
-    dex             ; current slot done.
-    beq +           ; all done?
-    jmp -           ; if no, keep going.
-    +
-    stz $2224       ; readjust sas mapping.
-    stz !qutieIndex ; clear queue index.
-    rtl             ;
+        iny             ; next queue slot.
+        dex             ; current slot done.
+        beq +           ; all done?
+        jmp -           ; if no, keep going.
+        +
+        stz $2224       ; readjust sas mapping.
+        stz !qutieIndex ; clear queue index.
+        rtl             ;
