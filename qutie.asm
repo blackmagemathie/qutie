@@ -2,90 +2,75 @@ incsrc "def.asm"
 
 freecode
 
-incsrc "pal.asm"
-    
-process:
-    ldx !qutieIndex     ; get queue index into x.
-    bne +               ; zero?
-    rtl                 ; if yes, return.
-    +
-    lda #$80            ; set vram incrementation mode.
-    sta $2215           ;
-    lda.b #!qutiePage   ; adjust sas mapping.
-    sta $2224           ;
-    ldy #$00            ; initialise queue index.
-    -
-    lda.w !qutieSizeLo,y    ; set transfer size.
-    sta $4325               ; 
-    lda.w !qutieSizeHi,y    ;
-    sta $4326               ;
-    lda.w !qutieVramLo,y    ; set vram position.
-    sta $2116               ;
-    lda.w !qutieVramHi,y    ;
-    sta $2117               ;
-    lda.w !qutieType,y      ; type positive?
-    bpl .ccdma              ; if yes, perform ccdma.
-    
-    .regular:
-        lda.w !qutieSourceLo,y  ; set ram position.
-        sta $4322               ;
-        lda.w !qutieSourceHi,y  ;
-        sta $4323               ;
-        lda.w !qutieSourceBk,y  ;
-        sta $4324               ;
-        lda.w !qutieType,y      ; backup or upload?
-        lsr                     ;
-        bcs +                   ;
-        lda #$81                ; set dma parameters.
-        sta $4320               ;
-        lda #$39                ; set target register.
-        sta $4321               ;
-        lda $213a               ; (necessary dummy read)
-        bra .activate
-        +
-        lda #$01                ; set dma parameters.
-        sta $4320               ;
-        lda #$18                ; set target register.
-        sta $4321               ;
-        bra .activate
-        
-    .ccdma:
-        sta $2231               ; set ccdma parameters.
-        lda #$81                ; tell sa1 to enable ccdma.
-        sta $2200               ;
-        lda.w !qutieSourceLo,y  ; set source.
-        sta $4322               ;
-        sta $2232               ;
-        lda.w !qutieSourceHi,y  ;
-        sta $4323               ;
-        sta $2233               ;
-        lda.w !qutieSourceBk,y  ;
-        sta $4324               ;
-        sta $2234               ;
-        rep #$20
-        lda #$1801              ; set dma parameters, and target register.
-        sta $4320               ;
-        lda #$3700              ; use i-ram buffer at $3700.
-        sta $2235               ;
-        sep #$20
-        lda #$04                ; execute ccdma.
-        sta $420b               ;
-        lda #$80                ; signal end of conversion.
-        sta $2231               ;
-        lda #$82                ; tell sa1 to disable ccdma.
-        sta $2200               ;
-        bra .next
-        
-    .activate:
-        lda #$04    ; execute dma.
-        sta $420b   ;
-        
+run:
+    lda #$80 : sta $2215
+    lda.b #!qutie_queue_page : sta $2224
+    ldy #$00
+    .slot:
+        lda.w !qutie_size_lo,y : sta $4325
+        lda.w !qutie_size_hi,y : sta $4326
+        lda.w !qutie_type,y
+        asl
+        tax
+        jmp (.types,x)
     .next:
-        iny             ; next queue slot.
-        dex             ; current slot done.
-        beq +           ; all done?
-        jmp -           ; if no, keep going.
-        +
-        stz $2224       ; restore sas mapping.
-        stz !qutieIndex ; clear queue index.
-        rtl             ;
+        iny
+        cpy !qutie_index
+        bcc .slot
+        stz $2224
+        stz !qutie_index
+        rtl
+    ; ----
+    .types:
+        dw .gfx_write
+        dw .gfx_read
+        dw .pal_write
+        dw .pal_read
+        dw .ccdma
+    ; ----
+    .ccdma:
+        lda.w !qutie_cc_params,y : sta $2231
+        lda #$81 : sta $2200
+        lda.w !qutie_gp_lo,y : sta $2116
+        lda.w !qutie_gp_hi,y : sta $2117
+        lda.w !qutie_ram_lo,y : sta $4322 : sta $2232
+        lda.w !qutie_ram_hi,y : sta $4323 : sta $2233
+        lda.w !qutie_ram_bk,y : sta $4324 : sta $2234
+        rep #$20
+        lda #$1801 : sta $4320
+        lda #$3700 : sta $2235
+        sep #$20
+        lda #$04 : sta $420b
+        lda #$80 : sta $2231
+        lda #$82 : sta $2200
+        bra .next
+    .gfx_read:
+        lda #$81 : sta $4320
+        lda #$39 : sta $4321
+        sec
+        bra .gfx_shared
+    .gfx_write:
+        lda #$01 : sta $4320
+        lda #$18 : sta $4321
+        clc
+    .gfx_shared:
+        lda.w !qutie_gp_lo,y : sta $2116
+        lda.w !qutie_gp_hi,y : sta $2117
+        bcc .set_ram
+        lda $213a
+        bra .set_ram
+    .pal_read:
+        lda #$82 : sta $4320
+        lda #$3b : sta $4321
+        bra .pal_shared
+    .pal_write:
+        lda #$02 : sta $4320
+        lda #$22 : sta $4321
+    .pal_shared:
+        lda.w !qutie_gp_lo,y  : sta $2121
+    .set_ram:
+        lda.w !qutie_ram_lo,y : sta $4322
+        lda.w !qutie_ram_hi,y : sta $4323
+        lda.w !qutie_ram_bk,y : sta $4324
+        lda #$04 : sta $420b
+        jmp .next
