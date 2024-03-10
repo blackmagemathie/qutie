@@ -3,7 +3,7 @@ incsrc "def.asm"
 freecode
 
 run:
-    lda #$80 : sta $2215
+    lda #$80 : sta $2115
     lda.b #!qutie_queue_page : sta $2224
     ldy #$00
     .slot:
@@ -29,21 +29,26 @@ run:
         dw .ccdma
     ; ----
     .ccdma:
-        lda.w !qutie_cc_params,y : sta $2231
-        lda #$81 : sta $2200
+        lda #$81 : sta $2200 ; step 1
         lda.w !qutie_gp_lo,y : sta $2116
         lda.w !qutie_gp_hi,y : sta $2117
-        lda.w !qutie_ram_lo,y : sta $4322 : sta $2232
-        lda.w !qutie_ram_hi,y : sta $4323 : sta $2233
-        lda.w !qutie_ram_bk,y : sta $4324 : sta $2234
-        rep #$20
-        lda #$1801 : sta $4320
-        lda #$3700 : sta $2235
-        sep #$20
-        lda #$04 : sta $420b
-        lda #$80 : sta $2231
-        lda #$82 : sta $2200
-        bra .next
+        lda #$01 : sta $4320
+        lda #$18 : sta $4321
+        lda.w !qutie_ram_lo,y : sta $2232 : sta $4322 ; \ step 2
+        lda.w !qutie_ram_hi,y : sta $2233 : sta $4323 ; |
+        lda.w !qutie_ram_bk,y : sta $2234 : sta $4324 ; /
+        lda.w !qutie_cc_params,y : sta $2231 ; step 3
+        stz $2235 ; \ step 4
+        lda #$37  ; |
+        sta $2236 ; /
+        -         ; \ step 5
+        lda $2300 ; |
+        bit #$20  ; |
+        beq -     ; /
+        lda #$04 : sta $420b ; step 6
+        lda #$80 : sta $2231 ; \ step 7
+        lda #$82 : sta $2200 ; /
+        jmp .next
     .gfx_read:
         lda #$81 : sta $4320
         lda #$39 : sta $4321

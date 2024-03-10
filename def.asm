@@ -1,4 +1,4 @@
-!qutie_slots      = $20
+!qutie_slots      = $10
 !qutie_queue      = $418000
 !qutie_queue_page = (!qutie_queue&$01e000)/$2000
 !qutie_queue_abs  = $6000+(!qutie_queue&$001fff)
