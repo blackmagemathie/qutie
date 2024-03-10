@@ -3,6 +3,7 @@
 ## overview
 
 **qutie** is a [Callisto module](https://github.com/Underrout/callisto). it provides a DMA queue system to interact with VRAM during NMI.
+
 qutie is licensed under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). 
 
 ## requirements
